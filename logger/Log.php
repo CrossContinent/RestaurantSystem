@@ -39,7 +39,15 @@ class Log
         return !isset(Log::$ALLOWED_TAGS[$tag]) || Log::$ALLOWED_TAGS[$tag];
     }
 
-    public static function write($level = "debug", $tag, $message)
+    /**
+     * @param $level string DEBUG|INFO\WARN\ERROR
+     * @param $tag string Message context
+     * @param $message string Message to print
+     * @param $error Exception occurred
+     *
+     * @return bool
+     */
+    public static function write($level = "debug", $tag, $message, $error = null)
     {
         if (!in_array(strtolower($level), Log::ACCEPTED)) {
             throw new InvalidArgumentException("Unsupported log `level` type");
@@ -52,7 +60,11 @@ class Log
         $level = strtoupper($level);
 
         file_put_contents('php://stderr', "{$level} - {$date} {$tag}: $message\n");
+
+        if (isset($error)) {
+            file_put_contents('php://stderr', $error->getTrace());
+        }
+
         return true;
     }
-
 }
