@@ -38,20 +38,24 @@ final class RouterDispatcher
      *
      * @param callable $errorCallback
      */
-    public function setErrorCallback($errorCallback)
+    public function onErrorReturn($errorCallback)
     {
         $this->errorCallback = $errorCallback;
     }
 
     /**
-     * @param $request Request
-     * @param $response Response
-     * @param $next callable
+     * Dispatch request to proceed and fill the response object
      *
-     * @return Response
+     * @param $request Request Base request
+     * @param $response Response Base response
+     *
+     * @param $parent Chain Function to proceed in the end
+     * @return Response Transformed or original Response object
+     *
+     * @throws Exception
      * @throws HttpRequestException
      */
-    public function dispatchHandleRequest($request, $response, $next = null)
+    public function dispatchHandleRequest($request, $response, $parent = null)
     {
         $path = $request->path();
 
@@ -84,7 +88,7 @@ final class RouterDispatcher
         }
 
 
-        $chain = new Chain($routes, $next);
+        $chain = new Chain($routes, $parent);
         try {
             return $chain->proceed($request, $response);
         } catch (Exception $exception) {
@@ -93,16 +97,12 @@ final class RouterDispatcher
                 throw $exception;
             }
 
-            // Wrap it with out Exception
-            if (!($exception instanceof HttpException)) {
-                $exception = new HttpException($exception, 500);
-            }
-
-            $response = call_user_func_array($this->errorCallback, array($exception, $request, $response));
+            call_user_func_array($this->errorCallback, array($exception, $request, $response));
 
             if (!($response instanceof Response)) {
                 throw new Exception("Cannot cast to Response class");
             }
+
             return $response;
         }
     }
@@ -145,20 +145,36 @@ class Chain
     protected $routes;
 
     /**
-     * @var callable
+     * @var Chain
      */
-    protected $next;
+    protected $parent;
 
     /**
      * Chain constructor.
      *
      * @param $routes array
-     * @param $next callable
+     * @param $parent Chain
      */
-    public function __construct($routes, $next = null)
+    public function __construct($routes, $parent = null)
     {
         $this->routes = $routes;
-        $this->next = $next;
+        $this->parent = $parent;
+    }
+
+    /**
+     * @param $request
+     * @param $response
+     * @return boolean|Response
+     */
+    private function dispatchParentChain($request, $response)
+    {
+        if (isset($this->parent)) {
+            $callback = $this->parent;
+            unset($this->parent);
+            return $callback->proceed($request, $response);
+        } else {
+            return false;
+        }
     }
 
     /**
@@ -174,20 +190,15 @@ class Chain
             "----routes({$count})");
 
         if (count($this->routes) == 0) {
-            $next = isset($this->next) ? "next()" : "end();";
+            $next = isset($this->parent) ? "next()" : "end();";
 
             Log::write("debug", "RouterDispatcher",
                 "proceeding request({$request->path()}) with {$next}");
         }
 
         if (count($this->routes) == 0) {
-            if (isset($this->next)) {
-                $callback = $this->next;
-                unset($this->next);
-                return call_user_func_array($callback, array($request, $response, array($this, "proceed")));
-            } else {
-                return $response;
-            }
+            $value = $this->dispatchParentChain($request, $response);
+            return $value == false ? $response : $value;
         }
 
         /** @var RouteInfo $route */
@@ -204,46 +215,11 @@ class Chain
         /** @var $route RouteInfo */
         if ($route->isDispatcher()) {
             Log::write("debug", "RouterDispatcher", "Going deeper {$route->path}");
-            $route->callback->dispatchHandleRequest($request, $response, array($this, "proceed"));
+            $route->callback->dispatchHandleRequest($request, $response, $this);
         } else {
-            call_user_func_array($route->callback, array($request, $response, array($this, "proceed")));
+            call_user_func_array($route->callback, array($request, $response, $this));
         }
         return $response;
-    }
-}
-
-class HttpException
-{
-    /** @var Exception */
-    private $exception;
-    /**@var int */
-    private $status;
-
-    /**
-     * HttpException constructor.
-     * @param Exception $exception
-     * @param int $status
-     */
-    public function __construct(Exception $exception, $status)
-    {
-        $this->exception = $exception;
-        $this->status = $status;
-    }
-
-    /**
-     * @return Exception
-     */
-    public function getException()
-    {
-        return $this->exception;
-    }
-
-    /**
-     * @return int
-     */
-    public function getStatus()
-    {
-        return $this->status;
     }
 }
 
