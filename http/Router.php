@@ -49,6 +49,21 @@ final class RouterDispatcher
         $this->onErrorCallback = $errorCallback;
     }
 
+    public function start()
+    {
+        $request = new Request();
+        $response = new Response();
+
+        $response = $this->dispatchHandleRequest($request, $response);
+        http_response_code($response->getStatusCode());
+
+        foreach ($response->getHeaders() as $key => $value) {
+            header("{$key}: {$value}");
+        }
+
+        print($response->body());
+    }
+
     /**
      * Dispatch request to proceed and fill the response object
      *
@@ -135,23 +150,29 @@ final class RouterDispatcher
      */
     function __call($name, $arguments)
     {
+        if (count($arguments) < 2) {
+            throw new Exception("Two few exceptions required 2");
+        }
+
         $name = strtoupper($name);
 
         if (!in_array($name, RouterDispatcher::METHODS, true)) {
             throw new InvalidArgumentException("No such HTTP Method <{$name}>");
         }
 
-        $path = array_shift($arguments);
+        $path = $arguments[0];
 
         if (!is_string($path)) {
             throw new InvalidArgumentException("Path must be string type");
         }
 
-        if (count($arguments) == 0) {
+        $callbacks = $arguments[1];
+
+        if (count($callbacks) == 0) {
             throw new InvalidArgumentException("Callbacks are missing");
         }
 
-        return $this->path($name, $path, $arguments);
+        return $this->path($name, $path, $callbacks);
     }
 
     /**
@@ -172,8 +193,9 @@ final class RouterDispatcher
         }
 
         $callbacksCount = count($callbacks);
+
         Log::write("debug", "RouterDipatcher",
-            "registrating {$method} {$path}: {$callbacksCount} callbacks");
+            "registering {$method} {$path}: {$callbacksCount} callbacks");
 
         foreach ($callbacks as $callback) {
             array_push($this->stack, new RouteInfo($method, $path, $callback));
