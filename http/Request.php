@@ -12,7 +12,7 @@ class Request
     /**
      * @return string Protocol name HTTP/1.1 or HTTP/2
      */
-    public function protocol()
+    public function protocol(): string
     {
         return $_SERVER["SERVER_PROTOCOL"];
     }
@@ -20,12 +20,12 @@ class Request
     /**
      * @return string Path e.g /users/index
      */
-    public function path()
+    public function path(): string
     {
         return $_SERVER["REQUEST_URI"];
     }
 
-    public function body()
+    public function body(): array
     {
         return $_POST;
     }
@@ -33,7 +33,7 @@ class Request
     /**
      * @return array
      */
-    public function query()
+    public function query(): array
     {
         return $_GET;
     }
@@ -41,12 +41,12 @@ class Request
     /**
      * @return string Http method type GET/POST/PUT/DELETE
      */
-    public function method()
+    public function method(): string
     {
         return $_SERVER["REQUEST_METHOD"];
     }
 
-    public function toString()
+    public function toString(): string
     {
         return "{$this->method()} {$this->path()}";
     }
