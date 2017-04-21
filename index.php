@@ -11,8 +11,7 @@ require_once "http/Response.php";
 require_once "router/UserRouter.php";
 
 $dispatcher = new RouterDispatcher();
-$dispatcher->onErrorReturn(function ($error, $req, $res) {
-    /** @var $error Exception */
+$dispatcher->onErrorReturn(function (Exception $error, Request $req, Response $res) {
     /** @var $res Response */
     Log::write("debug", "RequestDispatcher", $error);
 
@@ -33,26 +32,18 @@ $dispatcher->onErrorReturn(function ($error, $req, $res) {
         ->send($htmlTemplate);
 });
 
-$dispatcher->middleware(function ($req, $res, $chain) {
-    /**
-     * @var $req Request
-     * @var $res Response
-     * @var $chain Chain
-     */
-
+$dispatcher->middleware(function (Request $req, Response $res, Chain $chain) {
     Log::write("debug", "RequestDispatcher", $req->toString());
 
     $chain->proceed($req, $res);
 });
 
-$dispatcher->path("GET", '', function ($req, $res, $chain) {
+$dispatcher->path("GET", '', function (Request $req, Response $res, Chain $chain) {
     /**
      * @var $req Request
      * @var $res Response
      * @var $chain Chain
      */
-
-    throw new Exception("Sample error thrown", 500);
 
     $res->status(200)->json(array("status" => "ok"));
 
@@ -60,17 +51,13 @@ $dispatcher->path("GET", '', function ($req, $res, $chain) {
 });
 
 $users = new UserRouter();
-$dispatcher->path("GET", 'users', $users->dispatcher());
+$dispatcher->route('users', $users->dispatcher());
 
-$dispatcher->middleware(function ($req, $res) {
-    /**
-     * @var $req Request
-     * @var $res Response
-     */
+$dispatcher->middleware(function (Request $req, Response $res) {
     $res->status(404)->setContentType("text/html")->send("404, Not found");
 });
 
-$dispatcher->middleware(function ($req, $res) {
+$dispatcher->middleware(function (Request $req, Response $res) {
     /**
      * @var $req Request
      * @var $res Response

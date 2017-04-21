@@ -16,7 +16,7 @@ final class RouterDispatcher
         "GET", "POST", "UPDATE", "DELETE", "HEAD",
     ];
 
-    private static function isHttpMethodEquals($original, $cmp)
+    private static function isHttpMethodEquals(string $original, string $cmp)
     {
         return $cmp == "*" || strtolower($original) == strtolower($cmp);
     }
@@ -38,7 +38,7 @@ final class RouterDispatcher
      *
      * @param callable $errorCallback
      */
-    public function onErrorReturn($errorCallback)
+    public function onErrorReturn(callable $errorCallback)
     {
         $this->errorCallback = $errorCallback;
     }
@@ -55,7 +55,7 @@ final class RouterDispatcher
      * @throws Exception
      * @throws HttpRequestException
      */
-    public function dispatchHandleRequest($request, $response, $parent = null)
+    public function dispatchHandleRequest(Request $request, Response $response, Chain $parent = null)
     {
         $path = $request->path();
 
@@ -107,7 +107,7 @@ final class RouterDispatcher
         }
     }
 
-    public function route($path, $router)
+    public function route(string $path, RouterDispatcher $router)
     {
         array_push($this->stack, new RouteInfo("*", $path, $router));
     }
@@ -129,7 +129,7 @@ final class RouterDispatcher
      *
      * @throws InvalidArgumentException
      */
-    public function path($method, $path, $callback)
+    public function path(string $method, string $path, $callback)
     {
         if (!in_array($method, RouterDispatcher::METHODS, true)) {
             throw new InvalidArgumentException("No such method={$method}");
@@ -155,7 +155,7 @@ class Chain
      * @param $routes array
      * @param $parent Chain
      */
-    public function __construct($routes, $parent = null)
+    public function __construct(array $routes, Chain $parent = null)
     {
         $this->routes = $routes;
         $this->parent = $parent;
@@ -166,7 +166,7 @@ class Chain
      * @param $response
      * @return boolean|Response
      */
-    private function dispatchParentChain($request, $response)
+    private function dispatchParentChain(Request $request, Response $response)
     {
         if (isset($this->parent)) {
             $callback = $this->parent;
@@ -183,7 +183,7 @@ class Chain
      * @return Response
      * @throws HttpException
      */
-    public function proceed($request, $response)
+    public function proceed(Request $request, Response $response): Response
     {
         $count = count($this->routes);
         Log::write("debug", "RouterDispatcher",
@@ -234,12 +234,12 @@ class RouteInfo
     /** @var mixed Callback to handle function */
     public $callback;
 
-    public function isMiddleware()
+    public function isMiddleware(): bool
     {
         return $this->path === "*" && $this->method === "*";
     }
 
-    public function isDispatcher()
+    public function isDispatcher(): bool
     {
         return $this->callback instanceof RouterDispatcher;
     }
@@ -250,7 +250,7 @@ class RouteInfo
      * @param $path
      * @param $callback
      */
-    public function __construct($method, $path, $callback)
+    public function __construct(string $method, string $path, $callback)
     {
         $this->method = strtolower($method);
 
@@ -264,7 +264,7 @@ class RouteInfo
      * @param $matches array
      * @return bool True if matches path string
      */
-    public function matches($path, $matches)
+    public function matches(string $path, array $matches): bool
     {
         if ($this->path === "*") {
             return true;
@@ -273,7 +273,7 @@ class RouteInfo
         }
     }
 
-    public function toString()
+    public function toString(): string
     {
         if ($this->isMiddleware()) {
             return "middleware()";
