@@ -188,13 +188,9 @@ final class RouterDispatcher
             throw new InvalidArgumentException("No such method={$method}");
         }
 
-        if (count($callbacks) == 1 && is_array($callbacks[0])) {
-            $callbacks = $callbacks[0];
-        }
-
         $callbacksCount = count($callbacks);
 
-        Log::write("debug", "RouterDipatcher",
+        Log::write("debug", "RouterDispatcher",
             "registering {$method} {$path}: {$callbacksCount} callbacks");
 
         foreach ($callbacks as $callback) {
