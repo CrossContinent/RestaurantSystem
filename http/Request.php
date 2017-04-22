@@ -8,6 +8,29 @@
  */
 class Request
 {
+    private const BODY_STREAM = "php://input";
+
+    /** @var array */
+    private $headers;
+
+    /** @var array */
+    private $body;
+
+    /**
+     * Request constructor.
+     */
+    public function __construct()
+    {
+        $this->headers = getallheaders();
+
+        // Fetching HTTP body or Post on failure
+        $body = file_get_contents(Request::BODY_STREAM);
+        if (!$body) {
+            $this->body = $_POST;
+        } else {
+            $this->body = json_decode($body, true);
+        }
+    }
 
     /**
      * @return string Protocol name HTTP/1.1 or HTTP/2
@@ -15,6 +38,17 @@ class Request
     public function protocol(): string
     {
         return $_SERVER["SERVER_PROTOCOL"];
+    }
+
+    /**
+     * Gives Header Value
+     *
+     * @param string $name Header name
+     * @return string|null Values associated with given Header name
+     */
+    public function header(string $name): ?string
+    {
+        return $this->headers[$name] ?? null;
     }
 
     /**
@@ -27,7 +61,7 @@ class Request
 
     public function body(): array
     {
-        return $_POST;
+        return $this->body;
     }
 
     /**
@@ -46,8 +80,13 @@ class Request
         return $_SERVER["REQUEST_METHOD"];
     }
 
-    public function toString(): string
+    function __toString()
     {
-        return "{$this->method()} {$this->path()}";
+        $response = "\n{$this->method()} {$this->path()}";
+        foreach ($this->headers as $key => $value) {
+            $response .= "\n{$key}: {$value}";
+        }
+        $response .= "\n\n" . json_encode($this->body);
+        return $response;
     }
 }
