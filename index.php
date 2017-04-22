@@ -1,5 +1,8 @@
 <?php
 
+error_reporting(1);
+ini_set('display_errors', 0);
+
 date_default_timezone_set("Asia/Tashkent");
 
 require_once "logger/Log.php";
@@ -10,18 +13,23 @@ require_once "http/Response.php";
 
 require_once "router/UserRouter.php";
 
+require_once "database/PersistentModel.php";
+require_once "database/DataSource.php";
+
+require_once "domain/Account.php";
+
 $dispatcher = new RouterDispatcher();
 $dispatcher->onErrorReturn(function (Exception $error, Request $req, Response $res) {
     /** @var $res Response */
     Log::write("debug", "RequestDispatcher", $error);
 
-    $htmlTemplate = "<h1>500 Internal Server Error</h1>";
+    $htmlTemplate = "<h1>{$error->getCode()} {$error->getMessage()}</h1>";
     $htmlTemplate .= "<strong style='font-size: 18px'>{$error->getMessage()}</strong>";
     $htmlTemplate .= "<pre>";
     foreach ($error->getTrace() as $trace) {
         $line = "";
         foreach ($trace as $key => $value) {
-            $line .= "<strong>{$key}</strong>: {$value} ";
+            $line .= "<strong>{$key}</strong>: " . var_export($value, true);
         }
         $htmlTemplate .= "{$line}\n";
     }
@@ -33,7 +41,8 @@ $dispatcher->onErrorReturn(function (Exception $error, Request $req, Response $r
 });
 
 $dispatcher->middleware(function (Request $req, Response $res, Chain $chain) {
-    Log::write("debug", "RequestDispatcher", $req->toString());
+    Log::write("debug", "RequestDispatcher",
+        "{$req->method()} {$req->path()} \n\t" . json_encode($req->body()));
 
     $chain->proceed($req, $res);
 });
@@ -53,35 +62,23 @@ $dispatcher->path("GET", '', function (Request $req, Response $res, Chain $chain
 $users = new UserRouter();
 $dispatcher->route('users', $users->dispatcher());
 
-$dispatcher->middleware(function (Request $req, Response $res) {
-    $res->status(404)->setContentType("text/html")->send("404, Not found");
-});
-
-$dispatcher->middleware(function (Request $req, Response $res) {
-    /**
-     * @var $req Request
-     * @var $res Response
-     */
-    Log::write("debug", "ResponseDispatcher", "{$req->protocol()} {$res->getStatusCode()}");
-    foreach ($res->getHeaders() as $key => $value) {
-        Log::write("debug", "ResponseDispatcher", "{$key}: {$value}");
+$dispatcher->middleware(function (Request $req, Response $res, Chain $chain) {
+    if (!$res->hasBody()) {
+        $res->status(404)->setContentType("text/html")->send("404, Not found");
     }
-    Log::write("debug", "ResponseDispatcher", $res->body());
+
+    $chain->proceed($req, $res);
 });
 
-$request = new Request();
-$response = new Response();
+$dispatcher->middleware(function (Request $req, Response $res) {
+    $response = "{$req->protocol()} {$res->getStatusCode()}";
+    foreach ($res->getHeaders() as $key => $value) {
+        $response .= "\n{$key}: {$value}";
+    }
+    $response .= "\n{$res->body()}";
+    Log::write("debug", "ResponseDispatcher", $response);
+});
 
-/**
- * Updated response
- * @var $response Response
- */
-$response = $dispatcher->dispatchHandleRequest($request, $response);
-
-foreach ($response->getHeaders() as $key => $value) {
-    header("{$key}: {$value}");
-}
-
-print($response->body());
+$dispatcher->start();
 
 ?>

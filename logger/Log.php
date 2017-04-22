@@ -5,12 +5,17 @@
  * User: Ozodrukh
  * Date: 4/20/17
  * Time: 10:53 AM
+ *
+ * @method static debug(string $tag, mixed $message)
+ * @method static info(string $tag, mixed $message)
+ * @method static warning(string $tag, mixed $message)
+ * @method static error(string $tag, mixed $message, ?Exception $e)
  */
 class Log
 {
 
-    const DATE_FORMAT = 'Y-m-d H:i:s';
-    const ACCEPTED = [
+    private const DATE_FORMAT = 'Y-m-d H:i:s';
+    private const ACCEPTED = [
         "debug",
         "info",
         "warning",
@@ -39,15 +44,27 @@ class Log
         return !isset(Log::$ALLOWED_TAGS[$tag]) || Log::$ALLOWED_TAGS[$tag];
     }
 
+    public static function __callStatic($name, $arguments)
+    {
+        if (in_array(strtolower($name), self::ACCEPTED)) {
+            if (count($arguments) == 2) {
+                $arguments[2] = null;
+            }
+            self::write($name, $arguments[0], $arguments[1], $arguments[2]);
+            return;
+        }
+        throw new BadMethodCallException("Log::{$name} not found");
+    }
+
     /**
      * @param $level string DEBUG|INFO\WARN\ERROR
      * @param $tag string Message context
-     * @param $message string Message to print
+     * @param $message mixed Message to print
      * @param $error Exception occurred
      *
      * @return bool
      */
-    public static function write($level = "debug", $tag, $message, $error = null)
+    public static function write($level = "debug", string $tag, $message, ?Exception $error = null)
     {
         if (!in_array(strtolower($level), Log::ACCEPTED)) {
             throw new InvalidArgumentException("Unsupported log `level` type");
@@ -58,6 +75,10 @@ class Log
         $tag = substr($tag, 0, strlen($tag) > 22 ? 22 : strlen($tag));
         $date = date(Log::DATE_FORMAT);
         $level = strtoupper($level);
+
+        if (!is_string($message) && !method_exists($message, '__toString')) {
+            $message = var_export($message, true);
+        }
 
         file_put_contents('php://stderr', "{$level} - {$date} {$tag}: $message\n");
 

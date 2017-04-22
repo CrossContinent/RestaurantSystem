@@ -20,10 +20,23 @@ class Response
      * @param int $status HTTP status code
      * @return Response self Builder pattern
      */
-    public function status($status)
+    public function status(int $status)
     {
         $this->status = $status;
         return $this;
+    }
+
+    /**
+     * @return bool True when body already written, otherwise returns False
+     */
+    public function hasBody(): bool
+    {
+        return isset($this->body);
+    }
+
+    public function isHeadersSent(): bool
+    {
+        return headers_sent();
     }
 
     /**
@@ -35,7 +48,7 @@ class Response
     }
 
     /**
-     * @return string
+     * @return array|string
      */
     public function body()
     {
@@ -106,7 +119,7 @@ class Response
     /**
      * @return string
      */
-    public function toString()
+    public function __toString()
     {
         $response = "HTTP {$this->status}";
 
