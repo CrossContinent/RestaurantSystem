@@ -1,5 +1,8 @@
 <?php
 
+error_reporting(1);
+ini_set('display_errors', 0);
+
 date_default_timezone_set("Asia/Tashkent");
 
 require_once "logger/Log.php";
@@ -9,6 +12,11 @@ require_once "http/Request.php";
 require_once "http/Response.php";
 
 require_once "router/UserRouter.php";
+
+require_once "database/PersistentModel.php";
+require_once "database/DataSource.php";
+
+require_once "domain/Account.php";
 
 $dispatcher = new RouterDispatcher();
 $dispatcher->onErrorReturn(function (Exception $error, Request $req, Response $res) {
@@ -21,10 +29,7 @@ $dispatcher->onErrorReturn(function (Exception $error, Request $req, Response $r
     foreach ($error->getTrace() as $trace) {
         $line = "";
         foreach ($trace as $key => $value) {
-            if (is_array($value)) {
-                $value = implode(', ', $value);
-            }
-            $line .= "<strong>{$key}</strong>: {$value} ";
+            $line .= "<strong>{$key}</strong>: " . var_export($value, true);
         }
         $htmlTemplate .= "{$line}\n";
     }
@@ -36,7 +41,8 @@ $dispatcher->onErrorReturn(function (Exception $error, Request $req, Response $r
 });
 
 $dispatcher->middleware(function (Request $req, Response $res, Chain $chain) {
-    Log::write("debug", "RequestDispatcher", $req);
+    Log::write("debug", "RequestDispatcher",
+        "{$req->method()} {$req->path()} \n\t" . json_encode($req->body()));
 
     $chain->proceed($req, $res);
 });
@@ -65,15 +71,12 @@ $dispatcher->middleware(function (Request $req, Response $res, Chain $chain) {
 });
 
 $dispatcher->middleware(function (Request $req, Response $res) {
-    /**
-     * @var $req Request
-     * @var $res Response
-     */
-    Log::write("debug", "ResponseDispatcher", "{$req->protocol()} {$res->getStatusCode()}");
+    $response = "{$req->protocol()} {$res->getStatusCode()}";
     foreach ($res->getHeaders() as $key => $value) {
-        Log::write("debug", "ResponseDispatcher", "{$key}: {$value}");
+        $response .= "\n{$key}: {$value}";
     }
-    Log::write("debug", "ResponseDispatcher", $res->body());
+    $response .= "\n{$res->body()}";
+    Log::write("debug", "ResponseDispatcher", $response);
 });
 
 $dispatcher->start();
