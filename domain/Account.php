@@ -8,6 +8,7 @@
  * @property  string $name
  * @property  string $role
  * @property  string $password
+ * @property  string $displayName
  */
 class Account extends PersistentModel
 {
@@ -21,7 +22,8 @@ class Account extends PersistentModel
             "createdAt" => ["sql" => "now()"],
             "name" => ["required" => true],
             "role" => ["required" => true],
-            "password" => ["required" => true]
+            "password" => ["required" => true],
+            "displayName" => ["required" => true]
         ), $columnValues);
     }
 }
