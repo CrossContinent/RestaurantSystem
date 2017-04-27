@@ -1,5 +1,8 @@
 <?php
 
+define('DEBUG_OUTPUT', 0);
+define('AUTH_KEY', '#!F#@!!You|||_@JORJ@');
+
 error_reporting(1);
 ini_set('display_errors', 0);
 
@@ -7,10 +10,13 @@ date_default_timezone_set("Asia/Tashkent");
 
 require_once "logger/Log.php";
 
+require_once "libs/JWT/JWT.php";
+
 require_once "http/Router.php";
 require_once "http/Request.php";
 require_once "http/Response.php";
 
+require_once "router/AuthenticationException.php";
 require_once "router/UserRouter.php";
 
 require_once "database/PersistentModel.php";
@@ -23,21 +29,28 @@ $dispatcher->onErrorReturn(function (Exception $error, Request $req, Response $r
     /** @var $res Response */
     Log::write("debug", "RequestDispatcher", $error);
 
-    $htmlTemplate = "<h1>{$error->getCode()} {$error->getMessage()}</h1>";
-    $htmlTemplate .= "<strong style='font-size: 18px'>{$error->getMessage()}</strong>";
-    $htmlTemplate .= "<pre>";
-    foreach ($error->getTrace() as $trace) {
-        $line = "";
-        foreach ($trace as $key => $value) {
-            $line .= "<strong>{$key}</strong>: " . var_export($value, true);
+    if (DEBUG_OUTPUT) {
+        $htmlTemplate = "<h1>{$error->getCode()} {$error->getMessage()}</h1>";
+        $htmlTemplate .= "<strong style='font-size: 18px'>{$error->getMessage()}</strong>";
+        $htmlTemplate .= "<pre>";
+        foreach ($error->getTrace() as $trace) {
+            $line = "";
+            foreach ($trace as $key => $value) {
+                $line .= "<strong>{$key}</strong>: " . var_export($value, true);
+            }
+            $htmlTemplate .= "{$line}\n";
         }
-        $htmlTemplate .= "{$line}\n";
-    }
-    $htmlTemplate .= "</pre>";
+        $htmlTemplate .= "</pre>";
 
-    $res->status($error->getCode())
-        ->setContentType("text/html")
-        ->send($htmlTemplate);
+        $res->status($error->getCode())
+            ->setContentType("text/html")
+            ->send($htmlTemplate);
+    } else {
+        $res->status($error->getCode())->json([
+            'status' => 'failed',
+            'message' => $error->getMessage()
+        ]);
+    }
 });
 
 $dispatcher->middleware(function (Request $req, Response $res, Chain $chain) {
