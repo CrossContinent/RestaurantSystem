@@ -52,11 +52,7 @@ class PersistentModel
     function __get($name)
     {
         if (isset($this->columnsDefinition[$name])) {
-            if (isset($name)) {
-                return $this->changed[$name] ?? $this->columns[$name];
-            } else {
-                return null;
-            }
+            return $this->changed[$name] ?? $this->columns[$name];
         }
         throw new BadFunctionCallException("No property <{$name}> found");
     }
@@ -65,6 +61,7 @@ class PersistentModel
     {
         if (isset($this->columnsDefinition[$name])) {
             $this->changed[$name] = $value;
+            return;
         }
 
         throw new BadFunctionCallException("No property <{$name}> found");
@@ -74,8 +71,11 @@ class PersistentModel
     {
         $unsatisfiedColumns = array();
         foreach ($this->columnsDefinition as $key => $value) {
-            if ($this->columnsDefinition[$key]["required"] && !isset($this->columns[$key])) {
-                array_push($unsatisfiedColumns, $key);
+            if ($this->columnsDefinition[$key]["required"]) {
+                $satisfied = !empty($this->changed[$key]) || !empty($this->columns[$key]);
+                if (!$satisfied) {
+                    array_push($unsatisfiedColumns, $key);
+                }
             }
         }
 
@@ -105,26 +105,29 @@ class PersistentModel
             return array();
         }
 
-        $needsCommaSeparate = false;
+        $values = [];
         $columnsSql = "";
         $placeholders = "";
+        $needsCommaSeparate = false;
 
         foreach ($this->columnsDefinition as $key => $definition) {
             $comma = ($needsCommaSeparate ? "," : '');
 
             $columnsSql .= $comma . "{$key}";
-            $placeholders .= $comma . "?";
             $needsCommaSeparate = true;
 
             if (isset($definition["sql"])) {
-                $this->changed[$key] = $definition["sql"];
+                $placeholders .= $comma . $definition["sql"];
+            } else {
+                $placeholders .= $comma . '? ';
+                array_push($values, $this->changed[$key] ?? $this->columns[$key]);
             }
         }
 
         return array(
             "columns" => $columnsSql,
             "placeholders" => $placeholders,
-            "values" => array_values($this->columns)
+            "values" => $values
         );
     }
 

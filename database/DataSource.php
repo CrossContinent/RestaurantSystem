@@ -44,6 +44,7 @@ class DataSource
 
         $this->database = new PDO(MYSQL_DB, MYSQL_USERNAME, MYSQL_PASSWORD);
         $this->database->setAttribute(PDO::ATTR_ERRMODE, true);
+        $this->database->setAttribute(PDO::ERRMODE_EXCEPTION, true);
     }
 
     /**
@@ -52,6 +53,16 @@ class DataSource
     public function getDatabase(): PDO
     {
         return $this->database;
+    }
+
+    public function getLastInsertedId()
+    {
+        $stmt = $this->database->query("SELECT LAST_INSERT_ID()");
+        try {
+            return $lastId = $stmt->fetchColumn();
+        } finally {
+            $stmt->closeCursor();
+        }
     }
 
 
@@ -70,7 +81,8 @@ class DataSource
         $statement = $this->database
             ->prepare("INSERT INTO restaurant.account({$data['columns']}) VALUE({$data['placeholders']})");
 
-        Log::debug(TAG, "SQL Explain: $statement->queryString");
+        Log::debug(TAG, "SQL Explain: $statement->queryString\n"
+            . join(',', $data['values']));
 
         return $statement->execute($data["values"]);
     }
@@ -95,7 +107,8 @@ class DataSource
         $statement = $this->database
             ->prepare("UPDATE restaurant.account SET {$setPlaceholdersSql} WHERE {$conditionsSql}");
 
-        Log::debug(TAG, "SQL Explain: $statement->queryString");
+        Log::debug(TAG, "SQL Explain: $statement->queryString\n"
+            . join(',', $data['values']));
 
         return $statement->execute(array_merge($data["values"], array_values($conditions)));
     }
