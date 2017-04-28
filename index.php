@@ -57,7 +57,7 @@ $dispatcher->onErrorReturn(function (Exception $error, Request $req, Response $r
 });
 
 $dispatcher->middleware(function (Request $req, Response $res, Chain $chain) {
-    Log::write("debug", "RequestDispatcher",
+    Log::debug("RequestDispatcher",
         "{$req->method()} {$req->path()} \n\t" . json_encode($req->body()));
 
     $res = $chain->proceed($req, $res);
@@ -68,7 +68,7 @@ $dispatcher->middleware(function (Request $req, Response $res, Chain $chain) {
     }
     $response .= "\n{$res->body()}";
 
-    Log::write("debug", "ResponseDispatcher", $response);
+    Log::debug("ResponseDispatcher", $response);
 });
 
 $dispatcher->path("GET", '', function (Request $req, Response $res, Chain $chain) {

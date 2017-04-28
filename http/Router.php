@@ -51,6 +51,8 @@ final class RouterDispatcher
 
     public function start()
     {
+
+        Log::debug("HELLO WORLD", "HJELLO");
         $request = new Request();
         $response = new Response();
 
