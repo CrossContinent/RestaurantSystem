@@ -1,6 +1,6 @@
 <?php
 
-define('DEBUG_OUTPUT', 0);
+define('DEBUG_OUTPUT', 1);
 define('AUTH_KEY', '#!F#@!!You|||_@JORJ@');
 
 error_reporting(1);
@@ -16,8 +16,11 @@ require_once "http/Router.php";
 require_once "http/Request.php";
 require_once "http/Response.php";
 
-require_once "router/AuthenticationException.php";
+require_once "middleware/permissions/Roles.php";
+
+require_once "router/BaseRouter.php";
 require_once "router/UserRouter.php";
+require_once "router/AuthenticationException.php";
 
 require_once "database/PersistentModel.php";
 require_once "database/DataSource.php";
@@ -57,7 +60,15 @@ $dispatcher->middleware(function (Request $req, Response $res, Chain $chain) {
     Log::write("debug", "RequestDispatcher",
         "{$req->method()} {$req->path()} \n\t" . json_encode($req->body()));
 
-    $chain->proceed($req, $res);
+    $res = $chain->proceed($req, $res);
+
+    $response = "{$req->protocol()} {$res->getStatusCode()}";
+    foreach ($res->getHeaders() as $key => $value) {
+        $response .= "\n{$key}: {$value}";
+    }
+    $response .= "\n{$res->body()}";
+
+    Log::write("debug", "ResponseDispatcher", $response);
 });
 
 $dispatcher->path("GET", '', function (Request $req, Response $res, Chain $chain) {
@@ -84,12 +95,7 @@ $dispatcher->middleware(function (Request $req, Response $res, Chain $chain) {
 });
 
 $dispatcher->middleware(function (Request $req, Response $res) {
-    $response = "{$req->protocol()} {$res->getStatusCode()}";
-    foreach ($res->getHeaders() as $key => $value) {
-        $response .= "\n{$key}: {$value}";
-    }
-    $response .= "\n{$res->body()}";
-    Log::write("debug", "ResponseDispatcher", $response);
+    Log::write("debug", "ResponseDispatcher", "Ended");
 });
 
 $dispatcher->start();
