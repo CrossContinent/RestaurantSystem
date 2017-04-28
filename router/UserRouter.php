@@ -1,25 +1,39 @@
 <?php
 
-use \Firebase\JWT\JWT as Token;
+use Firebase\JWT\JWT as Token;
 
 define('AUTH_ALG', 'HS256');
 
 /**
  * Routing of /users
- *
+ * @method callRoleCreatesUser()
+ * @method callSignIn()
+ * @method callSignUp()
  */
-class UserRouter
+class UserRouter extends BaseRouter
 {
-
     /**
-     * @return RouterDispatcher
+     * Dispatches Router create event
+     *
+     * Register all routes in {@code $router} that will later
+     * registered as sub routing in your Application
+     *
+     * @param RouterDispatcher $dispatcher Router
      */
-    public function dispatcher()
+    public function didRouterCreated(RouterDispatcher $dispatcher): void
     {
+        $roles = new Roles();
+        $roles->setRoleObservable(function (Request $request) {
+            return Roles::from($request->variable('token'));
+        });
+
         $dispatcher = new RouterDispatcher();
-        $dispatcher->post("", [$this, 'signUp']);
-        $dispatcher->get("", [$this, 'signIn']);
-        return $dispatcher;
+        $dispatcher->get("", $this->callSignIn());
+        $dispatcher->post("", $this->callSignUp());
+
+        $dispatcher->post("create", UserRouter::verifyAuthorization());
+        $dispatcher->post("create", $roles->hasRole('admin'));
+        $dispatcher->post("create", $this->callRoleCreatesUser());
     }
 
     private static function createToken(Account $account): string
@@ -42,20 +56,22 @@ class UserRouter
      *
      * @throws AuthenticationException
      */
-    public static function verifyAuthorization(Request $req, Response $res, Chain $chain)
+    public static function verifyAuthorization()
     {
-        $bearer = $req->header("Authorization");
-        if ($bearer !== null && "Bearer" === substr($bearer, 0, 6)) {
-            $tokenEncoded = substr($bearer, 6, strlen($bearer));
+        return function (Request $req, Response $res, Chain $chain) {
+            $bearer = $req->header("Authorization");
+            if ($bearer !== null && "Bearer" === substr($bearer, 0, 6)) {
+                $tokenEncoded = substr($bearer, 6, strlen($bearer));
 
-            try {
-                $req->setVariable('token', Token::decode($tokenEncoded, AUTH_KEY), false);
-                $chain->proceed($req, $res);
-            } catch (Exception $e) {
-                throw new AuthenticationException("Not authorized", 401);
+                try {
+                    $req->setVariable('token', Token::decode($tokenEncoded, AUTH_KEY), false);
+                    $chain->proceed($req, $res);
+                } catch (Exception $e) {
+                    throw new AuthenticationException("Not authorized", 401);
+                }
             }
-        }
-        throw new AuthenticationException("Not authorized", 401);
+            throw new AuthenticationException("Not authorized", 401);
+        };
     }
 
     public function signUp(Request $req, Response $res, Chain $chain)
@@ -122,6 +138,14 @@ class UserRouter
         }
 
         $chain->proceed($req, $res);
+    }
+
+    public function roleCreatesUser(Request $req, Response $res, Chain $chain)
+    {
+
+        $res->status(201)
+            ->setHeader('Authorization', 'Bearer ' . self::createToken($accounts[0]))
+            ->json(["status" => "ok"]);
     }
 }
 
