@@ -16,7 +16,9 @@ require_once "http/Router.php";
 require_once "http/Request.php";
 require_once "http/Response.php";
 
+require_once "middleware/permissions/Role.php";
 require_once "middleware/permissions/Roles.php";
+require_once "middleware/permissions/RoleMiddleware.php";
 
 require_once "router/BaseRouter.php";
 require_once "router/UserRouter.php";
