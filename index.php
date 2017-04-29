@@ -27,7 +27,7 @@ require_once "database/DataSource.php";
 
 require_once "domain/Account.php";
 
-require_once "libs/JWT/JWT.php";
+require_once "libs/jwt/JWT.php";
 
 $dispatcher = new RouterDispatcher();
 $dispatcher->onErrorReturn(function (Exception $error, Request $req, Response $res) {
