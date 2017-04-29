@@ -10,7 +10,7 @@ date_default_timezone_set("Asia/Tashkent");
 
 require "vendor/autoload.php";
 
-require_once "libs/JWT/JWT.php";
+require_once "logger/Log.php";
 
 require_once "http/Router.php";
 require_once "http/Request.php";
@@ -26,6 +26,8 @@ require_once "database/PersistentModel.php";
 require_once "database/DataSource.php";
 
 require_once "domain/Account.php";
+
+require_once "libs/JWT/JWT.php";
 
 $dispatcher = new RouterDispatcher();
 $dispatcher->onErrorReturn(function (Exception $error, Request $req, Response $res) {
