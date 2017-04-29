@@ -1,5 +1,7 @@
 <?php
 
+Log::debug("HELO", "WORLD");
+
 define('DEBUG_OUTPUT', 1);
 define('AUTH_KEY', '#!F#@!!You|||_@JORJ@');
 
@@ -8,6 +10,7 @@ ini_set('display_errors', 1);
 
 date_default_timezone_set("Asia/Tashkent");
 
+require "vendor/autoload.php";
 require_once "logger/Log.php";
 
 require_once "libs/JWT/JWT.php";
