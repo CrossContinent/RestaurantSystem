@@ -1,7 +1,9 @@
 <?php
-echo "HELLO WORLD";
 
-//
+require_once "logger/Log.php";
+Log::debug("HELLO WORLD", "HELLO WORLD");
+
+
 //define('DEBUG_OUTPUT', 1);
 //define('AUTH_KEY', '#!F#@!!You|||_@JORJ@');
 //
@@ -11,7 +13,6 @@ echo "HELLO WORLD";
 //date_default_timezone_set("Asia/Tashkent");
 //
 //require "vendor/autoload.php";
-//require_once "logger/Log.php";
 //
 //require_once "libs/JWT/JWT.php";
 //
@@ -29,8 +30,6 @@ echo "HELLO WORLD";
 //require_once "database/DataSource.php";
 //
 //require_once "domain/Account.php";
-//
-//Log::debug("HELO", "WORLD");
 //
 //$dispatcher = new RouterDispatcher();
 //$dispatcher->onErrorReturn(function (Exception $error, Request $req, Response $res) {
@@ -104,5 +103,5 @@ echo "HELLO WORLD";
 //});
 //
 //$dispatcher->start();
-
-?>
+//
+//?>
