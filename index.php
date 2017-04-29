@@ -1,7 +1,5 @@
 <?php
 
-Log::debug("HELO", "WORLD");
-
 define('DEBUG_OUTPUT', 1);
 define('AUTH_KEY', '#!F#@!!You|||_@JORJ@');
 
@@ -29,6 +27,8 @@ require_once "database/PersistentModel.php";
 require_once "database/DataSource.php";
 
 require_once "domain/Account.php";
+
+Log::debug("HELO", "WORLD");
 
 $dispatcher = new RouterDispatcher();
 $dispatcher->onErrorReturn(function (Exception $error, Request $req, Response $res) {
