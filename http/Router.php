@@ -1,5 +1,7 @@
 <?php
-Log::setLoggable("RouterDispatcher", false);
+define("ROUTER_TAG", "RouterDispatcher");
+
+Log::setLoggable(ROUTER_TAG, true);
 
 /**
  * Inspired by NodeJS Express framework trying to implement
@@ -54,7 +56,32 @@ final class RouterDispatcher
         $request = new Request();
         $response = new Response();
 
-        $response = $this->dispatchHandleRequest($request, $response);
+        $routes = $this->dispatchHandleRequest($request, $response);
+
+        if (count($routes) === 0) {
+            throw new BadMethodCallException("Route not found for 
+                   <{$request->path()}> | {$request->method()}");
+        }
+
+        $chain = new Chain($routes);
+
+        try {
+            $response = $chain->proceed($request, $response);
+        } catch (Exception $exception) {
+
+            if (!isset($this->onErrorCallback)) {
+                throw $exception;
+            }
+
+            $errorResponse = call_user_func_array($this->onErrorCallback, array($exception, $request, $response));
+
+            if (!empty($errorResponse) && !($errorResponse instanceof Response)) {
+                throw new Exception("Cannot cast to Response class");
+            }
+
+            $response = $errorResponse;
+        }
+
         http_response_code($response->getStatusCode());
 
         foreach ($response->getHeaders() as $key => $value) {
@@ -71,13 +98,15 @@ final class RouterDispatcher
      * @param $response Response Base response
      *
      * @param $parent Chain Function to proceed in the end
-     * @return Response Transformed or original Response object
+     * @return array Routes
      *
      * @throws Exception
      * @throws HttpRequestException
      */
     public function dispatchHandleRequest(Request $request, Response $response, Chain $parent = null)
     {
+        Log::debug(ROUTER_TAG, "Handing Dispatcher for {$this->base}");
+
         $path = $request->path();
 
         if (strpos($this->base, $path) == 0) {
@@ -86,51 +115,39 @@ final class RouterDispatcher
 
         $routes = [];
 
-        /** @var RouteInfo $route */
+        Log::debug(ROUTER_TAG, "Request({$request->method()} {$request->path()})");
+
+        /** @var RouteDetails $route */
         foreach ($this->stack as $route) {
+
+            if (Log::isLoggable(ROUTER_TAG))
+                Log::debug(ROUTER_TAG, "comparing Route({$route->method} {$route->path})");
+
             if (!RouterDispatcher::isHttpMethodEquals($request->method(), $route->method)) {
                 continue;
             } else if (!$route->matches($path, null)) {
                 continue;
             }
 
-            // fix Router path
-            if ($route->callback instanceof RouterDispatcher) {
+            if ($route->isDispatcher()) {
+                // fix Router path
                 $route->callback->base = $this->base . $path;
+
+                $routes = array_merge($route->callback->dispatchHandleRequest($request, $response), $routes);
+                continue;
+            } else {
+                // Satisfied router found, collecting
+                array_push($routes, $route);
             }
 
-            // Satisfied router found, collecting
-            array_push($routes, $route);
         }
 
-        if (count($routes) === 0 && !isset($parent) && !$parent->hasNext()) {
-            throw new BadMethodCallException("Route not found for 
-                   <{$request->path()}> | {$request->method()}");
-        }
-
-        $chain = new Chain($routes, $parent);
-
-        try {
-            return $chain->proceed($request, $response);
-        } catch (Exception $exception) {
-
-            if (!isset($this->onErrorCallback)) {
-                throw $exception;
-            }
-
-            call_user_func_array($this->onErrorCallback, array($exception, $request, $response));
-
-            if (!($response instanceof Response)) {
-                throw new Exception("Cannot cast to Response class");
-            }
-
-            return $response;
-        }
+        return $routes;
     }
 
     public function route(string $path, RouterDispatcher $router)
     {
-        array_push($this->stack, new RouteInfo("*", $path, $router));
+        array_push($this->stack, new RouteDetails("*", $path, $router));
     }
 
     /**
@@ -140,13 +157,16 @@ final class RouterDispatcher
      */
     public function middleware($callback)
     {
-        array_push($this->stack, new RouteInfo("*", "*", $callback));
+        array_push($this->stack, new RouteDetails("*", "*", $callback));
     }
 
     /**
      * Magic Moments of PHP :)
      *
+     * @param $name
+     * @param $arguments
      * @return RouterDispatcher
+     * @throws Exception
      */
     function __call($name, $arguments)
     {
@@ -190,164 +210,13 @@ final class RouterDispatcher
 
         $callbacksCount = count($callbacks);
 
-        Log::write("debug", "RouterDispatcher",
+        Log::debug(ROUTER_TAG,
             "registering {$method} {$path}: {$callbacksCount} callbacks");
 
         foreach ($callbacks as $callback) {
-            array_push($this->stack, new RouteInfo($method, $path, $callback));
+            array_push($this->stack, new RouteDetails($method, $path, $callback));
         }
 
         return $this;
-    }
-}
-
-class Chain
-{
-    /** @var array */
-    private $routes;
-
-    /** @var Chain */
-    private $parent;
-
-    /**
-     * Chain constructor.
-     *
-     * @param $routes array
-     * @param $parent Chain
-     */
-    public function __construct(array $routes, Chain $parent = null)
-    {
-        $this->routes = $routes;
-        $this->parent = $parent;
-    }
-
-    /**
-     * @param $request
-     * @param $response
-     * @return boolean|Response
-     */
-    private function dispatchProceedParentChain(Request $request, Response $response): ?Response
-    {
-        if (isset($this->parent)) {
-            $callback = $this->parent;
-            unset($this->parent);
-            return $callback->proceed($request, $response);
-        } else {
-            return null;
-        }
-    }
-
-    /**
-     * @return bool True chain can proceed to the next
-     */
-    public function hasNext()
-    {
-        return isset($this->parent) || count($this->routes) > 0;
-    }
-
-    /**
-     * @param $request Request
-     * @param $response Response
-     * @return Response
-     * @throws HttpException
-     */
-    public function proceed(Request $request, Response $response): Response
-    {
-        $count = count($this->routes);
-        Log::write("debug", "RouterDispatcher",
-            "----routes({$count})");
-
-        if (count($this->routes) == 0) {
-            $next = isset($this->parent) ? "next()" : "end();";
-
-            Log::write("debug", "RouterDispatcher",
-                "proceeding request({$request->path()}) with {$next}");
-        }
-
-        if (count($this->routes) == 0) {
-            return $this->dispatchProceedParentChain($request, $response) ?? $response;
-        }
-
-        /** @var RouteInfo $route */
-        $route = array_shift($this->routes);
-
-        Log::write("debug", "RouterDispatcher",
-            "proceeding request({$request->path()}) with {$route}");
-
-        /** @var $route RouteInfo */
-        if ($route->isDispatcher()) {
-            Log::write("debug", "RouterDispatcher", "Going deeper {$route->path}");
-            $route->callback->dispatchHandleRequest($request, $response, $this);
-        } else {
-            call_user_func_array($route->callback, array($request, $response, $this));
-        }
-        return $response;
-    }
-
-    function __toString()
-    {
-        return implode(' -> ', $this->routes);
-    }
-}
-
-class RouteInfo
-{
-    /** @var string HTTP Method */
-    public $method;
-
-    /** @var string HTTP Uri */
-    public $path;
-
-    /** @var mixed Callback to handle function */
-    public $callback;
-
-    public function isMiddleware(): bool
-    {
-        return $this->path === "*" && $this->method === "*";
-    }
-
-    public function isDispatcher(): bool
-    {
-        return $this->callback instanceof RouterDispatcher;
-    }
-
-    /**
-     * RouteInfo constructor.
-     * @param $method
-     * @param $path
-     * @param $callback
-     */
-    public function __construct(string $method, string $path, $callback)
-    {
-        $this->method = strtolower($method);
-
-        $this->path = strtolower($path);
-        $this->path = str_replace("/", "/", $this->path);
-        $this->callback = $callback;
-    }
-
-    /**
-     * @param $path string
-     * @param $matches array
-     * @return bool True if matches path string
-     */
-    public function matches(string $path, ?array $matches): bool
-    {
-        if ($this->path === "*") {
-            return true;
-        } else {
-            return preg_match("/^{$this->path}$/", $path, $matches);
-        }
-    }
-
-    public function __toString(): string
-    {
-        if ($this->isMiddleware()) {
-            return "middleware()";
-        } else if ($this->isDispatcher()) {
-            return "dispatcher()";
-        } else {
-            return "{$this->method} - {$this->path}: callback()";
-        }
     }
 }
