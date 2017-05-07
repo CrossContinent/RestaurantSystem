@@ -80,10 +80,10 @@ class Log
             $message = var_export($message, true);
         }
 
-        file_put_contents('php://stderr', "{$level} - {$date} {$tag}: $message\n");
+        file_put_contents("php://stderr", "{$level} - {$date} {$tag}: $message\n");
 
         if (isset($error)) {
-            file_put_contents('php://stderr', $error->getTrace());
+            file_put_contents('php://stderr', "{$error->getTraceAsString()}\n");
         }
 
         return true;
