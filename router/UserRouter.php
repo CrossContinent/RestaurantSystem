@@ -94,14 +94,22 @@ class UserRouter extends BaseRouter
         ];
 
         $database = new DataSource();
-        $accounts = $database->fetchAll(Account::TABLE, $conditions, ["id", "role"], function () {
-            return PersistentModel::create('Account', ['id', 'role'], func_get_args());
+        /**
+         * @var $accounts Account[]
+         */
+        $accounts = $database->fetchAll(Account::TABLE, $conditions, ["id", "displayName", "role"], function () {
+            return PersistentModel::create('Account', ["id", "displayName", "role"], func_get_args());
         });
 
         if (count($accounts) == 1) {
             $res->status(200)
                 ->setHeader('Authorization', 'Bearer ' . self::createToken($accounts[0]))
-                ->json(["status" => "ok"]);
+                ->json([
+                    "status" => "ok",
+                    "result" => array_filter($accounts[0]->toArray(), function ($val) {
+                        return $val != null;
+                    })
+                ]);
         }
 
         $chain->proceed($req, $res);
