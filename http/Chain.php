@@ -33,14 +33,12 @@ class Chain
     public function proceed(Request $request, Response $response): Response
     {
         $count = count($this->routes);
-        Log::write("debug", "RouterDispatcher",
-            "----routes({$count})");
+        Log::debug(Router::TAG, "----routes({$count})");
 
         if (count($this->routes) == 0) {
             $next = isset($this->parent) ? "next()" : "end();";
 
-            Log::write("debug", "RouterDispatcher",
-                "proceeding request({$request->path()}) with {$next}");
+            Log::debug(Router::TAG, "proceeding request({$request->path()}) with {$next}");
         }
 
         if (count($this->routes) == 0) {
@@ -50,8 +48,7 @@ class Chain
         /** @var RouteDetails $route */
         $route = array_shift($this->routes);
 
-        Log::write("debug", "RouterDispatcher",
-            "proceeding request({$request->path()}) with {$route}");
+        Log::debug(Router::TAG, "proceeding request({$request->path()}) with {$route}");
 
         call_user_func_array($route->callback, array($request, $response, $this));
         return $response;

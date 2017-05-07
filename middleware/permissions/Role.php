@@ -8,6 +8,9 @@ class Role
     private $name;
     private $permissions = array();
 
+    public const USER = "user";
+    public const SYSTEM = "system";
+
     /**
      * Role constructor.
      *

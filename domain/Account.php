@@ -15,7 +15,7 @@ class Account extends PersistentModel
 
     public const TABLE = "account";
     // Keys that are not accepted from RequestBody
-    private const EXCLUDED = ["id", "createdAt", "role"];
+    private const EXCLUDED = ["id", "createdAt"];
 
     public static function fromRequestBody(array $body): Account
     {

@@ -1,7 +1,4 @@
 <?php
-define("ROUTER_TAG", "RouterDispatcher");
-
-Log::setLoggable(ROUTER_TAG, true);
 
 /**
  * Inspired by NodeJS Express framework trying to implement
@@ -17,10 +14,11 @@ Log::setLoggable(ROUTER_TAG, true);
  * @method delete(string $path, ...$callbacks)
  * @method head(string $path, ...$callbacks)
  */
-final class RouterDispatcher
+final class Router
 {
 
-    const METHODS = [
+    public const TAG = "RouterDispatcher";
+    public const METHODS = [
         "GET", "POST", "UPDATE", "DELETE", "HEAD",
     ];
 
@@ -34,7 +32,7 @@ final class RouterDispatcher
      */
     private $stack = array();
 
-    private $base = '/';
+    private $base = '';
 
     /**
      * @var callable Listener for error
@@ -105,47 +103,52 @@ final class RouterDispatcher
      */
     public function dispatchHandleRequest(Request $request, Response $response, Chain $parent = null)
     {
-        Log::debug(ROUTER_TAG, "Handing Dispatcher for {$this->base}");
+        Log::debug(static::TAG, "Handing Dispatcher for {$this->base}");
 
         $path = $request->path();
-
-        if (strpos($this->base, $path) == 0) {
-            $path = substr($path, strlen($this->base), strlen($path));
-        }
-
         $routes = [];
 
-        Log::debug(ROUTER_TAG, "Request({$request->method()} {$request->path()})");
+        Log::debug(static::TAG, "Request({$request->method()} {$request->path()})");
 
         /** @var RouteDetails $route */
         foreach ($this->stack as $route) {
 
-            if (Log::isLoggable(ROUTER_TAG))
-                Log::debug(ROUTER_TAG, "comparing Route({$route->method} {$route->path})");
+            if ($route->path === '*') {
+                $matchResult = ['status' => RouteMatcher::MATCHED_FULL];
+            } else {
+                $matchResult = RouteMatcher::match($this->base . $route->path, $path);
+            }
 
-            if (!RouterDispatcher::isHttpMethodEquals($request->method(), $route->method)) {
-                continue;
-            } else if (!$route->matches($path, null)) {
+            $satisfies = $matchResult['status'] != RouteMatcher::MATCHED_NONE;
+            $satisfies &= Router::isHttpMethodEquals($request->method(), $route->method);
+
+            if (Log::isLoggable(static::TAG)) {
+                Log::debug(static::TAG,
+                    "comparing Route({$route->method} {$this->base}{$route->path})"
+                    . " matchType={$matchResult['status']} -> "
+                    . ($satisfies ? "true" : "false"));
+            }
+
+            if (!$satisfies) {
                 continue;
             }
 
             if ($route->isDispatcher()) {
                 // fix Router path
-                $route->callback->base = $this->base . $path;
+                $route->callback->base = join('/', $matchResult['matches']);
 
                 $routes = array_merge($route->callback->dispatchHandleRequest($request, $response), $routes);
                 continue;
-            } else {
+            } else if ($matchResult['status'] === RouteMatcher::MATCHED_FULL) {
                 // Satisfied router found, collecting
                 array_push($routes, $route);
             }
-
         }
 
         return $routes;
     }
 
-    public function route(string $path, RouterDispatcher $router)
+    public function route(string $path, Router $router)
     {
         array_push($this->stack, new RouteDetails("*", $path, $router));
     }
@@ -165,7 +168,7 @@ final class RouterDispatcher
      *
      * @param $name
      * @param $arguments
-     * @return RouterDispatcher
+     * @return Router
      * @throws Exception
      */
     function __call($name, $arguments)
@@ -176,7 +179,7 @@ final class RouterDispatcher
 
         $name = strtoupper($name);
 
-        if (!in_array($name, RouterDispatcher::METHODS, true)) {
+        if (!in_array($name, Router::METHODS, true)) {
             throw new InvalidArgumentException("No such HTTP Method <{$name}>");
         }
 
@@ -200,17 +203,17 @@ final class RouterDispatcher
      * @param $path string
      * @param array $callbacks
      * @internal param mixed $callback
-     * @return RouterDispatcher
+     * @return Router
      */
     public function path(string $method, string $path, ...$callbacks)
     {
-        if (!in_array(strtoupper($method), RouterDispatcher::METHODS, true)) {
+        if (!in_array(strtoupper($method), Router::METHODS, true)) {
             throw new InvalidArgumentException("No such method={$method}");
         }
 
         $callbacksCount = count($callbacks);
 
-        Log::debug(ROUTER_TAG,
+        Log::debug(static::TAG,
             "registering {$method} {$path}: {$callbacksCount} callbacks");
 
         foreach ($callbacks as $callback) {
@@ -220,3 +223,5 @@ final class RouterDispatcher
         return $this;
     }
 }
+
+Log::setLoggable(Router::TAG, true);

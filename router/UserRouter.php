@@ -6,6 +6,7 @@ define('AUTH_ALG', 'HS256');
 
 /**
  * Routing of /users
+ *
  * @method callRoleCreatesUser()
  * @method callSignIn()
  * @method callSignUp()
@@ -18,27 +19,30 @@ class UserRouter extends BaseRouter
      * Register all routes in {@code $router} that will later
      * registered as sub routing in your Application
      *
-     * @param RouterDispatcher $dispatcher Router
+     * @param Router $dispatcher Router
      */
-    public function didRouterCreated(RouterDispatcher $dispatcher): void
+    public function didRouterCreated(Router $dispatcher): void
     {
         $roles = new Roles();
         $roles->setRoleObservable(function (Request $request) {
             return Roles::from($request->variable('token'));
         });
 
-        $dispatcher = new RouterDispatcher();
-        $dispatcher->get("", $this->callSignIn());
-        $dispatcher->post("", $this->callSignUp());
+        $dispatcher->get("/", $this->callSignIn());
+        $dispatcher->post("/create", [
+            UserRouter::verifyAuthorization(),
+            $roles->hasRole(Role::SYSTEM),
+            $this->callRoleCreatesUser()
+        ]);
 
-        $dispatcher->post("create", UserRouter::verifyAuthorization());
-        $dispatcher->post("create", $roles->hasRole('admin'));
-        $dispatcher->post("create", $this->callRoleCreatesUser());
+        $dispatcher->get("/hello", function (Request $req, Response $res, Chain $chain) {
+            $res->json(["hello" => "world"]);
+            $chain->proceed($req, $res);
+        });
     }
 
     private static function createToken(Account $account): string
     {
-        Log::debug("Debug", $account);
         if (empty($account->role)) {
             throw new InvalidArgumentException("Account `role` field must present");
         } else if (empty($account->id)) {
@@ -74,41 +78,6 @@ class UserRouter extends BaseRouter
         };
     }
 
-    public function signUp(Request $req, Response $res, Chain $chain)
-    {
-
-        $account = Account::fromRequestBody($req->body());
-
-        if (strlen($account->password) < 8) {
-            throw new Exception('password length must have at least 8 characters', 400);
-        }
-
-        // by default role is simple `user`
-        $account->role = 'user';
-        // simple password hashing, from leaks
-        $account->password = md5($account->password);
-
-        $database = new DataSource();
-        if (!$database->insert($account)) {
-            throw new Exception('Name already exists', 400);
-        }
-
-        $account->id = $database->getLastInsertedId();
-
-        if ($database->getDatabase()->errorCode() !== PDO::ERR_NONE) {
-            throw new RuntimeException($database->getDatabase()->errorInfo(), 500);
-        }
-
-        $res->status(201)
-            ->setHeader('Authorization', 'Bearer ' . self::createToken($account))
-            ->json([
-                'status' => "ok",
-                "result" => ["id" => str_pad($account->id, 10, '0')]
-            ]);
-
-        $chain->proceed($req, $res);
-    }
-
     /**
      * User sign in
      *
@@ -129,8 +98,6 @@ class UserRouter extends BaseRouter
             return PersistentModel::create('Account', ['id', 'role'], func_get_args());
         });
 
-        Log::debug("Debug", $accounts);
-
         if (count($accounts) == 1) {
             $res->status(200)
                 ->setHeader('Authorization', 'Bearer ' . self::createToken($accounts[0]))
@@ -143,9 +110,41 @@ class UserRouter extends BaseRouter
     public function roleCreatesUser(Request $req, Response $res, Chain $chain)
     {
 
+        $account = Account::fromRequestBody($req->body());
+
+        if (strlen($account->password) < 8) {
+            throw new Exception('password length must have at least 8 characters', 400);
+        }
+
+        if (empty($account->role)) {
+            $account->role = Role::USER;
+        }
+
+        if (empty($account->displayName)) {
+            $account->displayName = $account->name;
+        }
+
+        // simple password hashing, from leaking
+        $account->password = md5($account->password);
+
+        $database = new DataSource();
+        if (!$database->insert($account)) {
+            throw new Exception('Account already exists', 400);
+        }
+
+        $account->id = $database->getLastInsertedId();
+
+        if ($database->getDatabase()->errorCode() !== PDO::ERR_NONE) {
+            throw new RuntimeException($database->getDatabase()->errorInfo(), 500);
+        }
+
         $res->status(201)
-            ->setHeader('Authorization', 'Bearer ' . self::createToken($accounts[0]))
-            ->json(["status" => "ok"]);
+            ->json([
+                'status' => "ok",
+                "result" => ["id" => str_pad($account->id, 10, '0')]
+            ]);
+
+        $chain->proceed($req, $res);
     }
 }
 

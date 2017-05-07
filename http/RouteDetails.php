@@ -18,7 +18,7 @@ class RouteDetails
 
     public function isDispatcher(): bool
     {
-        return $this->callback instanceof RouterDispatcher;
+        return $this->callback instanceof Router;
     }
 
     /**
@@ -29,30 +29,9 @@ class RouteDetails
      */
     public function __construct(string $method, string $path, $callback)
     {
-        $this->path = strtolower($path);
-        $this->path = str_replace("/", "/", $this->path);
-        $this->method = strtolower($method);
+        $this->path = $path;
         $this->callback = $callback;
-    }
-
-    /**
-     * @param $path string
-     * @param $matches array
-     * @return bool True if matches path string
-     */
-    public function matches(string $path, ?array $matches): bool
-    {
-        if ($this->path === "*") {
-            return true;
-        } else {
-            $result = preg_match("/^\/?{$this->path}\/?$/", $path, $matches);
-
-            if (preg_last_error() !== PREG_NO_ERROR) {
-                Log::error("RouterDispatcher", "Error parsing: " . preg_last_error(), null);
-            }
-
-            return $result;
-        }
+        $this->method = strtolower($method);
     }
 
     public function __toString(): string

@@ -4,6 +4,14 @@ abstract class BaseRouter
 {
     private const PREFIX_CALL_LENGTH = 4;
 
+    /**
+     * Removes trailing `call` prefix in method name:
+     * callSignIn -> signIn
+     * callCreateUser -> createUser
+     *
+     * @param $name string Calling method name with `call` prefix
+     * @return null|string method name without `call` prefix
+     */
     private static function getCallingMethod($name)
     {
         if (strlen($name) > BaseRouter::PREFIX_CALL_LENGTH &&
@@ -26,6 +34,14 @@ abstract class BaseRouter
 
     }
 
+    /**
+     * Every method that starts with `call` would return method reference
+     * to calling method
+     *
+     * @param $name string Method name
+     * @param $arguments mixed no-op
+     * @return array Method reference for reflection call
+     */
     function __call($name, $arguments)
     {
         $callingMethod = self::getCallingMethod($name);
@@ -36,9 +52,14 @@ abstract class BaseRouter
         throw new BadMethodCallException("Method not found {$callingMethod}", 500);
     }
 
-    public final function dispatcher(): RouterDispatcher
+    /**
+     * Creates dispatcher to install it to {@link RouterDispatcher#route}
+     *
+     * @return Router
+     */
+    public final function dispatcher(): Router
     {
-        $this->dispatcher = new RouterDispatcher();
+        $this->dispatcher = new Router();
         $this->didRouterCreated($this->dispatcher);
         return $this->dispatcher;
     }
@@ -49,7 +70,7 @@ abstract class BaseRouter
      * Register all routes in {@code $router} that will later
      * registered as sub routing in your Application
      *
-     * @param RouterDispatcher $router Router
+     * @param Router $router Router
      */
-    public abstract function didRouterCreated(RouterDispatcher $router): void;
+    public abstract function didRouterCreated(Router $router): void;
 }

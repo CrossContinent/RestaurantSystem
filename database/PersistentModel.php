@@ -49,6 +49,11 @@ class PersistentModel
         }
     }
 
+    function __isset($name)
+    {
+        return isset($this->columnsDefinition[$name]);
+    }
+
     function __get($name)
     {
         if (isset($this->columnsDefinition[$name])) {

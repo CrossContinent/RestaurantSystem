@@ -3,8 +3,8 @@
 define('DEBUG_OUTPUT', 1);
 define('AUTH_KEY', '#!F#@!!You|||_@JORJ@');
 
-//error_reporting(1);
-//ini_set('display_errors', 1);
+error_reporting(1);
+ini_set('display_errors', 0);
 
 date_default_timezone_set("Asia/Tashkent");
 
@@ -12,9 +12,13 @@ require "vendor/autoload.php";
 
 require_once "logger/Log.php";
 
-require_once "http/Router.php";
 require_once "http/Request.php";
 require_once "http/Response.php";
+
+require_once "http/Chain.php";
+require_once "http/Router.php";
+require_once "http/RouteDetails.php";
+require_once "http/RouteMatcher.php";
 
 require_once "middleware/permissions/Role.php";
 require_once "middleware/permissions/Roles.php";
@@ -31,10 +35,10 @@ require_once "domain/Account.php";
 
 require_once "libs/jwt/JWT.php";
 
-$dispatcher = new RouterDispatcher();
+$dispatcher = new Router();
 $dispatcher->onErrorReturn(function (Exception $error, Request $req, Response $res) {
     /** @var $res Response */
-    Log::write("debug", "RequestDispatcher", $error);
+    Log::debug("RequestDispatcher", $error);
 
     if (DEBUG_OUTPUT) {
         $htmlTemplate = "<h1>{$error->getCode()} {$error->getMessage()}</h1>";
@@ -75,7 +79,7 @@ $dispatcher->middleware(function (Request $req, Response $res, Chain $chain) {
     Log::debug("ResponseDispatcher", $response);
 });
 
-$dispatcher->path("GET", '', function (Request $req, Response $res, Chain $chain) {
+$dispatcher->path("GET", '/', function (Request $req, Response $res, Chain $chain) {
     /**
      * @var $req Request
      * @var $res Response
@@ -88,7 +92,7 @@ $dispatcher->path("GET", '', function (Request $req, Response $res, Chain $chain
 });
 
 $users = new UserRouter();
-$dispatcher->route('users', $users->dispatcher());
+$dispatcher->route('/users', $users->dispatcher());
 
 $dispatcher->middleware(function (Request $req, Response $res, Chain $chain) {
     if (!$res->hasBody()) {
@@ -99,7 +103,7 @@ $dispatcher->middleware(function (Request $req, Response $res, Chain $chain) {
 });
 
 $dispatcher->middleware(function (Request $req, Response $res) {
-    Log::write("debug", "ResponseDispatcher", "Ended");
+    Log::debug("ResponseDispatcher", "Ended");
 });
 
 $dispatcher->start();
