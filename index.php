@@ -99,6 +99,8 @@ $dispatcher->middleware(function (Request $req, Response $res, Chain $chain) {
         $res->status(404)->setContentType("text/html")->send("404, Not found");
     }
 
+    // Add CORS support
+    $res->setHeader("Access-Control-Allow-Origin", "*");
     $chain->proceed($req, $res);
 });
 
