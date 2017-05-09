@@ -28,7 +28,7 @@ class UserRouter extends BaseRouter
             return Roles::from($request->variable('token'));
         });
 
-        $dispatcher->get("/", $this->callSignIn());
+        $dispatcher->post("/", $this->callSignIn());
         $dispatcher->post("/create", [
             UserRouter::verifyAuthorization(),
             $roles->hasRole(Role::SYSTEM),

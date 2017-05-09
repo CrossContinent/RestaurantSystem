@@ -42,7 +42,18 @@ class DataSource
     public function __construct()
     {
 
-        $this->database = new PDO(MYSQL_DB, MYSQL_USERNAME, MYSQL_PASSWORD);
+        if (!empty(getenv('CLEARDB_DATABASE_URL'))) {
+            $url = parse_url(getenv('CLEARDB_DATABASE_URL'));
+            $host = "mysql:host={$url['host']};dbname=" . substr($url["path"], 1);
+            $username = $url['user'];
+            $password = $url['pass'];
+        } else {
+            $host = MYSQL_DB;
+            $username = MYSQL_USERNAME;
+            $password = MYSQL_PASSWORD;
+        }
+
+        $this->database = new PDO($host, $username, $password);
         $this->database->setAttribute(PDO::ATTR_ERRMODE, true);
         $this->database->setAttribute(PDO::ERRMODE_EXCEPTION, true);
     }
