@@ -10,6 +10,7 @@
  *
  * @method post(string $path, ...$callbacks)
  * @method get(string $path, ...$callbacks)
+ * @method options(string $path, ...$callbacks)
  * @method update(string $path, ...$callbacks)
  * @method delete(string $path, ...$callbacks)
  * @method head(string $path, ...$callbacks)
@@ -19,7 +20,7 @@ final class Router
 
     public const TAG = "RouterDispatcher";
     public const METHODS = [
-        "GET", "POST", "UPDATE", "DELETE", "HEAD",
+        "GET", "POST", "OPTIONS", "DELETE", "HEAD",
     ];
 
     private static function isHttpMethodEquals(string $original, string $cmp)

@@ -94,6 +94,11 @@ $dispatcher->path("GET", '/', function (Request $req, Response $res, Chain $chai
 $users = new UserRouter();
 $dispatcher->route('/users', $users->dispatcher());
 
+$dispatcher->options('*', function (Request $req, Response $res, Chain $chain) {
+    $res->send("OK");
+    $chain->proceed($req, $res);
+});
+
 $dispatcher->middleware(function (Request $req, Response $res, Chain $chain) {
     if (!$res->hasBody()) {
         $res->status(404)->setContentType("text/html")->send("404, Not found");
@@ -101,6 +106,8 @@ $dispatcher->middleware(function (Request $req, Response $res, Chain $chain) {
 
     // Add CORS support
     $res->setHeader("Access-Control-Allow-Origin", "*");
+    $res->setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Access-Control-Allow-Origin");
+    $res->setHeader("Header always set Access-Control-Allow-Methods", "PUT, GET, POST, DELETE, OPTIONS");
     $chain->proceed($req, $res);
 });
 
