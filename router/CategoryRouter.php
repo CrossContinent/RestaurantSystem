@@ -6,8 +6,16 @@
  * Date: 5/9/17
  * Time: 5:02 PM
  */
-class CategoryRouter extends BaseRouter
+class CategoryRouter extends ModelRouter
 {
+    /**
+     * CategoryRouter constructor.
+     */
+    public function __construct()
+    {
+        parent::__construct('Category');
+    }
+
 
     /**
      * Dispatches Router create event
@@ -19,6 +27,8 @@ class CategoryRouter extends BaseRouter
      */
     public function didRouterCreated(Router $router): void
     {
-
+        $router->get('/', $this->callQuery());
+        $router->post('/', $this->callCreate());
+        $router->delete('/', $this->callDelete());
     }
 }

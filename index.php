@@ -28,6 +28,7 @@ require_once "router/BaseRouter.php";
 require_once "router/ModelRouter.php";
 require_once "router/UserRouter.php";
 require_once "router/ProductRouter.php";
+require_once "router/CategoryRouter.php";
 require_once "router/AuthenticationException.php";
 
 require_once "database/PersistentModel.php";
@@ -98,6 +99,7 @@ $dispatcher->path("GET", '/', function (Request $req, Response $res, Chain $chai
 $routers = [
     "/users" => new UserRouter(),
     "/products" => new ProductRouter(),
+    "/categories" => new CategoryRouter(),
 ];
 
 foreach ($routers as $path => $router) {

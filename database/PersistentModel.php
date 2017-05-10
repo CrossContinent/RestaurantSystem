@@ -21,6 +21,17 @@ class PersistentModel
         return $reflection->newInstance($combined);
     }
 
+    public static function createFromRequestBody(string $className, array $body): PersistentModel
+    {
+        $class = new ReflectionClass($className);
+        $excluded = $class->getConstant("EXCLUDED");
+
+        /** @noinspection PhpIncompatibleReturnTypeInspection */
+        return $class->newInstance(array_filter($body, function ($key) use ($excluded) {
+            return empty(array_search($key, $excluded, true));
+        }, ARRAY_FILTER_USE_KEY));
+    }
+
     /**
      * PersistentModel constructor.
      * @param string $tableName Table name

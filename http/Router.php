@@ -20,7 +20,7 @@ final class Router
 
     public const TAG = "RouterDispatcher";
     public const METHODS = [
-        "GET", "POST", "OPTIONS", "DELETE", "HEAD",
+        "GET", "POST", "OPTIONS", "DELETE", "HEAD", "UPDATE"
     ];
 
     private static function isHttpMethodEquals(string $original, string $cmp)

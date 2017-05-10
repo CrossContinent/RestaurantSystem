@@ -14,7 +14,9 @@ class Product extends PersistentModel
 {
     public const TABLE = "product";
     // Keys that are not accepted from RequestBody
-    private const EXCLUDED = [];
+    public const EXCLUDED = [
+        "id", "createdAt", "available"
+    ];
 
     /**
      * Product constructor.

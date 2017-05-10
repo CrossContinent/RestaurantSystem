@@ -2,6 +2,11 @@
 
 /**
  * Class ModelRouter
+ *
+ * @method callCreate
+ * @method callDelete
+ * @method callUpdate
+ * @method callQuery
  */
 abstract class ModelRouter extends BaseRouter
 {
@@ -10,6 +15,7 @@ abstract class ModelRouter extends BaseRouter
      * @var string Class representing Model that extends PersistentModel
      */
     private $modelClass;
+    private $tableName;
 
     /**
      * ModelRouter constructor.
@@ -18,12 +24,14 @@ abstract class ModelRouter extends BaseRouter
      */
     public function __construct($modelClass)
     {
-        Log::debug("DEBUG", class_parents($modelClass));
         if (!in_array("PersistentModel", class_parents($modelClass))) {
             throw new InvalidArgumentException("Class must be extended from PersistentModel");
         }
 
         $this->modelClass = $modelClass;
+
+        $class = new ReflectionClass($this->modelClass);
+        $this->tableName = $class->getConstant("TABLE");
     }
 
     /**
@@ -73,7 +81,7 @@ abstract class ModelRouter extends BaseRouter
 
         if (is_array($fields)) {
             $fieldsSql .= array_reduce($fields, function ($carry, $item) {
-                return $carry .= ($carry === '' ? ' ' : ', ') . $item;
+                return $carry . ($carry === '' ? ' ' : ', ') . $item;
             }, '');
         } else {
             $fieldsSql .= $fields;
@@ -81,14 +89,22 @@ abstract class ModelRouter extends BaseRouter
 
         if (!empty($joins)) {
             foreach ($joins as $joinDef) {
-                $joinsSql .= array_key_exists("join", $joinDef) ? $joinDef["join"] : '';
-                $joinsSql .= " JOIN ON ";
+                $joinsSql .= array_key_exists("join", $joinDef) ? strtoupper($joinDef["join"]) : '';
+                $joinsSql .= " JOIN {$joinDef['table']} ON ";
 
-                $first = true;
-                foreach ($joinDef['on'] as $key => $value) {
-                    $joinsSql .= ($first ? ' ' : ', ') . "{$key} = {$value}";
-                    $first = false;
+                $fields = $joinDef['fields'];
+
+                $fieldsSql .= ', ';
+                if (is_array($fields)) {
+                    $fieldsSql .= array_reduce($fields, function ($carry, $item) {
+                        return $carry . ($carry === '' ? ' ' : ', ') . $item;
+                    }, '');
+                } else {
+                    $fieldsSql .= $fields;
                 }
+
+                $condition = $joinDef['on'];
+                $joinsSql .= $condition;
             }
         }
 
@@ -119,9 +135,26 @@ abstract class ModelRouter extends BaseRouter
         }
     }
 
+    public function delete(Request $request, Response $response, Chain $chain)
+    {
+        if (!isset($request->query()['id'])) {
+            $response->status(400)->json(['status' => 'failed']);
+        } else {
+            $source = new DataSource();
+
+            if ($source->delete($this->tableName, $request->query()['id'])) {
+                $response->status(201)->json(['status' => 'ok']);
+            } else {
+                $response->status(500)->json(['status' => 'failed']);
+            }
+        }
+
+        $chain->proceed($request, $response);
+    }
+
     public function create(Request $request, Response $response, Chain $chain)
     {
-        $model = $this->createModel($this->modelClass, $request->body());
+        $model = PersistentModel::createFromRequestBody($this->modelClass, $request->body());
 
         $source = new DataSource();
 
@@ -136,11 +169,8 @@ abstract class ModelRouter extends BaseRouter
 
     public function query(Request $request, Response $response, Chain $chain)
     {
-        $class = new ReflectionClass($this->modelClass);
-        $tableName = $class->getConstant("TABLE");
-
         $result = $this->queryModels([
-            "table" => $tableName,
+            "table" => $this->tableName,
             "fields" => "*",
         ]);
 
