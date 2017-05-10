@@ -25,13 +25,17 @@ require_once "middleware/permissions/Roles.php";
 require_once "middleware/permissions/RoleMiddleware.php";
 
 require_once "router/BaseRouter.php";
+require_once "router/ModelRouter.php";
 require_once "router/UserRouter.php";
+require_once "router/ProductRouter.php";
 require_once "router/AuthenticationException.php";
 
 require_once "database/PersistentModel.php";
 require_once "database/DataSource.php";
 
 require_once "domain/Account.php";
+require_once "domain/Product.php";
+require_once "domain/Category.php";
 
 require_once "libs/jwt/JWT.php";
 
@@ -91,11 +95,23 @@ $dispatcher->path("GET", '/', function (Request $req, Response $res, Chain $chai
     $chain->proceed($req, $res);
 });
 
-$users = new UserRouter();
-$dispatcher->route('/users', $users->dispatcher());
+$routers = [
+    "/users" => new UserRouter(),
+    "/products" => new ProductRouter(),
+];
+
+foreach ($routers as $path => $router) {
+    $dispatcher->route($path, $router->dispatcher());
+}
 
 $dispatcher->options('*', function (Request $req, Response $res, Chain $chain) {
+    // Add CORS support
+    $res->setHeader("Access-Control-Allow-Origin", "*");
+    $res->setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Access-Control-Allow-Origin");
+    $res->setHeader("Access-Control-Allow-Methods", "PUT, GET, POST, DELETE, OPTIONS");
+
     $res->send("OK");
+
     $chain->proceed($req, $res);
 });
 
@@ -104,10 +120,6 @@ $dispatcher->middleware(function (Request $req, Response $res, Chain $chain) {
         $res->status(404)->setContentType("text/html")->send("404, Not found");
     }
 
-    // Add CORS support
-    $res->setHeader("Access-Control-Allow-Origin", "*");
-    $res->setHeader("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Access-Control-Allow-Origin");
-    $res->setHeader("Access-Control-Allow-Methods", "PUT, GET, POST, DELETE, OPTIONS");
     $chain->proceed($req, $res);
 });
 
