@@ -43,7 +43,7 @@ class ProductRouter extends ModelRouter
                     "join" => "left",
                     "table" => Category::TABLE,
                     "fields" => "category.name as categoryName",
-                    "on" => "category.id = product.id"
+                    "on" => "category.id = product.categoryId"
                 ]
             ],
         ]);
