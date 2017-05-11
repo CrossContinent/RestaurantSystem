@@ -30,6 +30,11 @@ class RouteMatcher
             $path = substr($path, 1);
         }
 
+        $argsPos = strpos($path, '?');
+        if ($argsPos !== false) {
+            $path = substr($path, 0, $argsPos);
+        }
+
         $matches = [];
 
         $seq = 0;
@@ -56,7 +61,6 @@ class RouteMatcher
             array_push($matches, substr($path, $index - $seq, $seq));
         }
 
-        // if remained only separator(/) then it matches fully, otherwise partial
         $status = static::MATCHED_FULL;
         $remained = strlen($dest) > strlen($path) ? $dest : $path;
         for (; $index < strlen($remained); $index++) {
@@ -66,15 +70,11 @@ class RouteMatcher
             }
         }
 
-
         // Trailing could be left in the $path
         if ($status == static::MATCHED_PARTIAL && $remained == $dest) {
             return ['status' => static::MATCHED_NONE];
         }
 
-        return array(
-            "matches" => $matches,
-            "status" => $status
-        );
+        return ["matches" => $matches, "status" => $status];
     }
 }

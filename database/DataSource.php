@@ -76,6 +76,15 @@ class DataSource
         }
     }
 
+    public function delete(string $table, string $id): bool
+    {
+        if (empty($id)) {
+            throw new InvalidArgumentException("empty id");
+        }
+
+        $statement = $this->database->prepare("DELETE FROM {$table} WHERE id=?");
+        return $statement->execute([$id]);
+    }
 
     /**
      * @param PersistentModel $model
