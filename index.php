@@ -107,11 +107,6 @@ foreach ($routers as $path => $router) {
 }
 
 $dispatcher->options('*', function (Request $req, Response $res, Chain $chain) {
-    // Add CORS support
-    $res->setHeader("Access-Control-Allow-Origin", "*");
-    $res->setHeader("Access-Control-Allow-Headers", "Origin, Authorization, X-Requested-With, Content-Type, Access-Control-Allow-Origin");
-    $res->setHeader("Access-Control-Allow-Methods", "PUT, GET, POST, DELETE, OPTIONS");
-
     $res->send("OK");
 
     $chain->proceed($req, $res);
@@ -121,6 +116,11 @@ $dispatcher->middleware(function (Request $req, Response $res, Chain $chain) {
     if (!$res->hasBody()) {
         $res->status(404)->setContentType("text/html")->send("404, Not found");
     }
+
+    // Add CORS support
+    $res->setHeader("Access-Control-Allow-Origin", "*");
+    $res->setHeader("Access-Control-Allow-Headers", "Origin, Authorization, X-Requested-With, Content-Type, Access-Control-Allow-Origin");
+    $res->setHeader("Access-Control-Allow-Methods", "PUT, GET, POST, DELETE, OPTIONS");
 
     $chain->proceed($req, $res);
 });
